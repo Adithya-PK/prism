@@ -16,6 +16,7 @@ import { RescueSimulationModal } from './components/RescueSimulationModal';
 import { ActivityTimeline } from './components/ActivityTimeline';
 import { GeminiExplanationPanel } from './components/GeminiExplanationPanel';
 import { MarketFeedPanel } from './components/MarketFeedPanel';
+import { FlashVaultInspector } from './components/FlashVaultInspector';
 
 import { fetchDashboard, simulateRescue } from './services/api';
 import { DashboardResponse, RescueResult } from './types';
@@ -425,6 +426,17 @@ export function App() {
               <ActivityTimeline activities={dashboardData?.activity ?? []} />
             </div>
           </div>
+
+          {/* Automated Flash-Repayment Vault Smart Contract Inspector (Problem Statement #11) */}
+          {dashboardData?.has_position && (
+            <div className="mb-6">
+              <FlashVaultInspector
+                intervention={dashboardData?.intervention}
+                selectedStrategy={dashboardData?.strategies?.find((s) => s.is_selected)}
+                borrowerAddress={activeAddress}
+              />
+            </div>
+          )}
 
           {/* Strategy & Economics Comparison */}
           {dashboardData?.has_position && (

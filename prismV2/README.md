@@ -5,6 +5,7 @@
 ---
 
 ## 1. Executive Summary & Core Purpose
+> **CSI ORIGIN 2026 Problem Statement #11 Solution**: *Automated Liquidation Shield & Flash-Repayment Vault*
 
 ### The Problem in DeFi Lending
 In overcollateralized DeFi protocols like Aave, Compound, MakerDAO, and Morpho, users deposit collateral (ETH, WBTC, wstETH) to borrow stablecoins or other crypto assets (USDC, USDT, DAI). 
