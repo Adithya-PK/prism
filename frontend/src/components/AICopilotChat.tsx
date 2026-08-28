@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Send, Sparkles, Trash2, ArrowRight, User, HelpCircle, Shield, Zap } from 'lucide-react';
+import { Bot, Send, Sparkles, Trash2, Shield, Zap, Calculator, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 interface ChatMessage {
   id: string;
@@ -14,12 +14,110 @@ interface AICopilotChatProps {
 }
 
 const QUICK_PROMPTS = [
-  'How was the minimum intervention repayment calculated?',
+  'How is the exact minimum repayment calculated?',
   'Explain the ML liquidation risk prediction & features',
   'How does the 14-step flash loan rescue work?',
   'Why is the Economic Viability Gate approved?',
-  'Explain the Health Factor formula and liquidation threshold',
+  'Explain the Health Factor formula and liquidation boundaries',
 ];
+
+// Rich text formatter for formatted math, code blocks, bold text, and bullets
+const FormattedMessage: React.FC<{ content: string }> = ({ content }) => {
+  // Split content into blocks (code blocks vs text blocks)
+  const blocks = content.split(/(```[\s\S]*?```|\$\$[\s\S]*?\$\$)/g);
+
+  return (
+    <div className="space-y-2 text-xs font-mono leading-relaxed">
+      {blocks.map((block, idx) => {
+        if (!block) return null;
+
+        // Math block ```math ... ``` or $$ ... $$
+        if (block.startsWith('```math') || block.startsWith('```') || block.startsWith('$$')) {
+          const rawFormula = block
+            .replace(/^```math\n?/, '')
+            .replace(/^```\n?/, '')
+            .replace(/\n?```$/, '')
+            .replace(/^\$\$\n?/, '')
+            .replace(/\n?\$\$$/, '')
+            .trim();
+
+          return (
+            <div
+              key={idx}
+              className="my-2 p-3 rounded-lg bg-slate-900/90 border border-purple-500/40 text-purple-200 shadow-inner font-mono text-[11px] overflow-x-auto"
+            >
+              <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-wider text-purple-400 font-bold mb-1.5 pb-1 border-b border-purple-500/20">
+                <Calculator className="w-3 h-3 text-purple-400" />
+                <span>FORMULA & SOLVER DERIVATION</span>
+              </div>
+              <pre className="whitespace-pre font-mono text-emerald-300 leading-normal">{rawFormula}</pre>
+            </div>
+          );
+        }
+
+        // Regular text block - process lines
+        const lines = block.split('\n');
+        return (
+          <div key={idx} className="space-y-1">
+            {lines.map((line, lineIdx) => {
+              const trimmed = line.trim();
+              if (!trimmed) return <div key={lineIdx} className="h-1" />;
+
+              // Bullet points
+              if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('* ')) {
+                const bulletContent = trimmed.replace(/^[•\-\*]\s*/, '');
+                return (
+                  <div key={lineIdx} className="flex items-start gap-2 pl-1 py-0.5">
+                    <span className="text-purple-400 font-bold mt-0.5 select-none">•</span>
+                    <span className="text-slate-200 flex-1">{renderInlineText(bulletContent)}</span>
+                  </div>
+                );
+              }
+
+              // Horizontal divider
+              if (trimmed.startsWith('────') || trimmed.startsWith('---')) {
+                return <hr key={lineIdx} className="border-border/60 my-1.5" />;
+              }
+
+              // Regular paragraph
+              return (
+                <p key={lineIdx} className="text-slate-200">
+                  {renderInlineText(line)}
+                </p>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// Helper to format inline bold, numbers, highlights
+function renderInlineText(text: string): React.ReactNode[] {
+  // Regex to split by **bold**, `code`, and currency/percent highlights
+  const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g);
+
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      const inner = part.slice(2, -2);
+      return (
+        <strong key={i} className="text-white font-bold font-mono">
+          {inner}
+        </strong>
+      );
+    }
+    if (part.startsWith('`') && part.endsWith('`')) {
+      const inner = part.slice(1, -1);
+      return (
+        <code key={i} className="px-1 py-0.5 rounded bg-purple-950/60 border border-purple-500/30 text-purple-300 text-[10px]">
+          {inner}
+        </code>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
 
 export const AICopilotChat: React.FC<AICopilotChatProps> = ({ contextData }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -130,7 +228,7 @@ export const AICopilotChat: React.FC<AICopilotChatProps> = ({ contextData }) => 
           type="button"
           onClick={handleClear}
           title="Clear Conversation"
-          className="p-1.5 rounded-lg bg-surface-secondary hover:bg-slate-800 border border-border text-slate-400 hover:text-slate-200 transition-colors"
+          className="p-1.5 rounded-lg bg-surface-secondary hover:bg-slate-800 border border-border text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
@@ -178,13 +276,17 @@ export const AICopilotChat: React.FC<AICopilotChatProps> = ({ contextData }) => 
             </div>
 
             <div
-              className={`p-3 rounded-xl max-w-[92%] leading-relaxed ${
+              className={`p-3 rounded-xl max-w-[95%] leading-relaxed ${
                 m.sender === 'user'
                   ? 'bg-purple-600 text-white rounded-tr-none shadow-md shadow-purple-600/20'
                   : 'bg-surface-secondary border border-border/80 text-slate-200 rounded-tl-none shadow-inner'
               }`}
             >
-              <div className="whitespace-pre-wrap">{m.text}</div>
+              {m.sender === 'user' ? (
+                <div className="font-mono text-xs whitespace-pre-wrap">{m.text}</div>
+              ) : (
+                <FormattedMessage content={m.text} />
+              )}
             </div>
           </div>
         ))}
@@ -193,7 +295,7 @@ export const AICopilotChat: React.FC<AICopilotChatProps> = ({ contextData }) => 
           <div className="flex flex-col items-start">
             <div className="flex items-center gap-1.5 mb-1 px-1">
               <Sparkles className="w-3 h-3 text-purple-400 animate-spin" />
-              <span className="text-[10px] text-purple-300 font-bold">PRISM Copilot is thinking...</span>
+              <span className="text-[10px] text-purple-300 font-bold">PRISM Copilot is calculating...</span>
             </div>
             <div className="p-3 rounded-xl bg-surface-secondary border border-border/80 text-slate-400 rounded-tl-none flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '0ms' }} />
