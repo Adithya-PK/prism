@@ -161,8 +161,10 @@ def compute_capital_preservation_score(rescue_cost: float, liq_loss: float, net_
 
 
 @router.post('/calculate')
-async def calculate_position(position: SimulationPosition):
+async def calculate_position(position: Optional[SimulationPosition] = None):
     """Calculate all PRISM metrics for a simulated position."""
+    if position is None:
+        position = SimulationPosition()
     eth_amount = position.eth_amount
     eth_price = position.eth_price
     debt_usdc = position.debt_usdc
