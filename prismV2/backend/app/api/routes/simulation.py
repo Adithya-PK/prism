@@ -593,3 +593,32 @@ async def simulate_rescue(req: SimulationPosition):
         'net_benefit': round(net_benefit, 2),
         'message': f'RESCUE SUCCESSFUL. HF: {hf:.4f} → {final_hf:.4f}. Capital Preserved: ${capital_score["capital_saved"]:.2f}.',
     }
+
+
+class SimulationChatRequest(BaseModel):
+    message: str
+    context: dict = {}
+    history: Optional[List[dict]] = None
+
+
+@router.post('/chat')
+async def simulation_chat(req: SimulationChatRequest):
+    """
+    PRISM Copilot AI Chatbot endpoint.
+    Answers any user question regarding real-time simulation metrics, formulas,
+    the ML model, flash loan execution, economic gate, and keeper logic.
+    """
+    try:
+        reply, source = await llm_service.chat_copilot(req.message, req.context, req.history)
+        return {
+            'reply': reply,
+            'source': source,
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+        }
+    except Exception as e:
+        logger.error(f'Simulation chat error: {e}')
+        return {
+            'reply': 'PRISM Risk Engine is monitoring position parameters. Please ask regarding Health Factor, Minimum Intervention, ML Risk, or Economic Gate.',
+            'source': 'PRISM Knowledge Fallback',
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+        }

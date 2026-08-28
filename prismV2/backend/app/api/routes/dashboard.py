@@ -285,9 +285,11 @@ async def get_dashboard(
             "wallet": wallet_data.model_dump() if wallet_data else None,
             "wallet_error": None,
             "portfolio": {
-                "total_value_usd": wallet_data.total_portfolio_value_usd if wallet_data else 0.0,
+                "total_value_usd": round((wallet_data.total_portfolio_value_usd if wallet_data else 0.0) + (position.total_collateral_value_usd if position else 0.0), 2),
+                "wallet_balance_usd": wallet_data.total_portfolio_value_usd if wallet_data else 0.0,
+                "defi_collateral_usd": position.total_collateral_value_usd if position else 0.0,
                 "token_count": len(wallet_data.tokens) if wallet_data else 0,
-            } if wallet_data else None,
+            } if (wallet_data or position) else None,
             "market": market_data.model_dump() if market_data else None,
             "defi_position": position.model_dump() if position else None,
             "defi_position_source": position_source,

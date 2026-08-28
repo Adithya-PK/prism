@@ -9,6 +9,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ReferenceLine, ResponsiveContainer, AreaChart, Area
 } from 'recharts';
+import { AICopilotChat } from './AICopilotChat';
 
 /* ─── Types ──────────────────────────────────────────────────────────── */
 interface Position {
@@ -827,6 +828,9 @@ const SimulationDashboard: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* 🤖 Interactive PRISM AI Risk Copilot */}
+            <AICopilotChat contextData={simResult} />
           </div>
 
           {/* Right: Crash Simulator + Intervention + Economics + Capital Score */}

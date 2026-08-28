@@ -155,3 +155,29 @@ def test_simulation_rescue_endpoint():
     assert data["final_hf"] >= data["original_hf"]
     assert "capital_saved" in data
     assert "capital_preservation_score" in data
+
+
+def test_simulation_chat_endpoint():
+    payload = {
+        "message": "Explain how the minimum intervention formula works",
+        "context": {
+            "health_factor": 1.10,
+            "position": {
+                "eth_amount": 10.0,
+                "eth_price": 4000.0,
+                "debt_usdc": 30000.0,
+                "liquidation_threshold": 0.825,
+            },
+            "target_hf_data": {"target_hf": 1.20, "dynamic_buffer": 0.20},
+            "intervention": {"debt_to_repay_usd": 8135.18, "collateral_to_sell_eth": 2.0492},
+            "economics": {"rescue_cost_usd": 86.44, "liquidation_loss_usd": 750.0, "net_benefit_usd": 663.56},
+            "capital_preservation": {"score": 88.5},
+            "decision": "RESCUE",
+        },
+    }
+    response = client.post("/api/v1/simulation/chat", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "reply" in data
+    assert len(data["reply"]) > 20
+    assert "source" in data

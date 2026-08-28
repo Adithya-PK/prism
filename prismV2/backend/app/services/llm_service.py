@@ -271,9 +271,171 @@ Format your output as 4-5 bullet points without preamble."""
             bullets.append(f"Economic viability validated: execution cost of ${cost:.2f} preserves ${benefit:.2f} in net capital vs ${loss:.2f} liquidation penalty. Decision: RESCUE.")
         elif decision == "DO_NOT_RESCUE":
             bullets.append(f"Execution blocked: rescue cost (${cost:.2f}) approaches or exceeds estimated liquidation loss (${loss:.2f}). Decision: DO NOT RESCUE.")
-        elif decision == "EXECUTION_UNSAFE":
-            bullets.append(f"Execution rejected: DEX liquidity or slippage parameters exceed safety limits. Decision: EXECUTION UNSAFE.")
-        else:
-            bullets.append("Continuous keeper monitoring active across on-chain blocks and price ticks. Decision: ALREADY SAFE.")
-
         return bullets
+
+    async def chat_copilot(self, message: str, context: Dict[str, Any], history: list[dict] = None) -> tuple[str, str]:
+        """
+        Interactive Copilot Chat for PRISM.
+        Answers any question about real-time position metrics, formulas, ML model,
+        flash loans, capital preservation, and keeper decision logic.
+        Returns (answer_text, source)
+        """
+        model = self._get_model()
+        if model:
+            try:
+                system_prompt = self._build_chat_system_prompt(context)
+                chat_prompt = f"{system_prompt}\n\nUser Question: {message}\n\nProvide a clear, authoritative, mathematically grounded answer:"
+                response = model.generate_content(chat_prompt)
+                text = response.text.strip()
+                if text:
+                    return text, "Gemini 1.5 Flash"
+            except Exception as e:
+                logger.warning(f"Gemini chat notice: {e}")
+
+        # Deterministic domain-expert answer fallback
+        return self._deterministic_chat_reply(message, context), "PRISM Knowledge Engine"
+
+    def _build_chat_system_prompt(self, context: Dict[str, Any]) -> str:
+        pos = context.get("position", {})
+        eth_amt = pos.get("eth_amount", 10.0)
+        eth_price = pos.get("eth_price", 4000.0)
+        col_usd = pos.get("collateral_usd", eth_amt * eth_price)
+        debt = pos.get("debt_usdc", 30000.0)
+        lt = pos.get("liquidation_threshold", 0.825)
+        hf = context.get("health_factor", 1.10)
+        vel = context.get("hf_velocity", 0.0)
+        target = context.get("target_hf_data", {}).get("target_hf", 1.20)
+        buffer = context.get("target_hf_data", {}).get("dynamic_buffer", 0.20)
+        ml_prob = context.get("ml_prediction", {}).get("probability", 0.178) * 100
+        ml_class = context.get("ml_prediction", {}).get("risk_class", "SAFE")
+        intervention = context.get("intervention", {})
+        repay = intervention.get("debt_to_repay_usd", 0.0)
+        eth_sold = intervention.get("collateral_to_sell_eth", 0.0)
+        post_hf = intervention.get("post_rescue_hf", target)
+        econ = context.get("economics", {})
+        cost = econ.get("rescue_cost_usd", 86.44)
+        loss = econ.get("liquidation_loss_usd", 750.0)
+        benefit = econ.get("net_benefit_usd", 663.56)
+        score = context.get("capital_preservation", {}).get("score", 88.5)
+        decision = context.get("decision", "RESCUE")
+
+        return f"""You are the PRISM Risk Copilot, an elite AI quantitative risk expert embedded in the PRISM Autonomous Liquidation Shield.
+PRISM protects leveraged ETH/USDC positions on Aave V3 by executing atomic flash-loan restructurings before liquidation occurs.
+
+CURRENT LIVE TERMINAL CONTEXT:
+- Collateral: {eth_amt} ETH (${col_usd:,.2f} USD) @ ${eth_price:,.2f}/ETH
+- USDC Debt: ${debt:,.2f} USDC (Liquidation Threshold: {lt*100:.1f}%)
+- Current Health Factor (HF): {hf:.4f} (Liquidation boundary: 1.000)
+- HF Velocity: {vel:+.4f}/min
+- Dynamic Target HF: {target:.4f} (Adaptive safety buffer: +{buffer*100:.1f}%)
+- ML Liquidation Probability: {ml_prob:.1f}% ({ml_class})
+- Minimum Intervention: Repay ${repay:,.2f} USDC | Sell {eth_sold:.4f} ETH
+- Post-Rescue Verified HF: {post_hf:.4f}
+- Economic Ledger: Rescue Cost ${cost:.2f} | Liquidation Loss Avoided ${loss:.2f} | Net Benefit ${benefit:.2f}
+- Capital Preservation Score: {score:.1f}/100
+- Autonomous Decision: {decision}
+
+CORE MATHEMATICAL FORMULAS IN PRISM:
+1. Health Factor: HF = (Collateral_USD * LT) / Debt_USD
+2. Friction Factor: k = (1 + f_flash) / (1 - f_dex - slippage) [f_flash=0.05%, f_dex=0.30%, slippage=0.40%]
+3. Minimum Repayment (Closed-form): x = (Target_HF * Debt - Collateral * LT) / (Target_HF - LT * k)
+4. Collateral to Sell: y = k * x (in USD) -> ETH = y / ETH_Price
+5. Capital Preservation Score: ((Liquidation_Loss - Rescue_Cost) / Liquidation_Loss) * 100%
+6. ML Model: Scikit-learn GradientBoostingClassifier trained on 12,000 scenarios using 7 features.
+
+Answer questions directly, professionally, with accurate values and clear mathematical derivations."""
+
+    def _deterministic_chat_reply(self, message: str, context: Dict[str, Any]) -> str:
+        q = message.lower()
+        pos = context.get("position", {})
+        eth_amt = pos.get("eth_amount", 10.0)
+        eth_price = pos.get("eth_price", 4000.0)
+        col_usd = pos.get("collateral_usd", eth_amt * eth_price)
+        debt = pos.get("debt_usdc", 30000.0)
+        lt = pos.get("liquidation_threshold", 0.825)
+        hf = context.get("health_factor", 1.10)
+        target = context.get("target_hf_data", {}).get("target_hf", 1.20)
+        buffer = context.get("target_hf_data", {}).get("dynamic_buffer", 0.20)
+        ml_prob = context.get("ml_prediction", {}).get("probability", 0.178) * 100
+        intervention = context.get("intervention", {})
+        repay = intervention.get("debt_to_repay_usd", 8135.18)
+        eth_sold = intervention.get("collateral_to_sell_eth", 2.0492)
+        econ = context.get("economics", {})
+        cost = econ.get("rescue_cost_usd", 86.44)
+        loss = econ.get("liquidation_loss_usd", 750.0)
+        benefit = econ.get("net_benefit_usd", 663.56)
+        score = context.get("capital_preservation", {}).get("score", 88.5)
+        decision = context.get("decision", "RESCUE")
+
+        if any(k in q for k in ["how", "calculate", "formula", "minimum intervention", "repay", "repayment"]):
+            return (
+                "PRISM solves for the exact minimum debt repayment (x) using the closed-form equation:\n\n"
+                "$$x = \\frac{\\text{Target HF} \\times D - C \\times LT}{\\text{Target HF} - LT \\times k}$$\n\n"
+                f"Where:\n"
+                f"• C = ${col_usd:,.2f} (Collateral)\n"
+                f"• D = ${debt:,.2f} (USDC Debt)\n"
+                f"• LT = {lt*100:.1f}% (Liquidation Threshold)\n"
+                f"• Target HF = {target:.3f}\n"
+                f"• k = (1 + 0.0005) / (1 - 0.003 - 0.004) = 1.007553\n\n"
+                f"For the current position, this yields **${repay:,.2f} USDC** debt repayment by releasing **{eth_sold:.4f} ETH**, restoring HF exactly to **{target:.3f}**."
+            )
+
+        if any(k in q for k in ["ml", "machine learning", "model", "probability", "predict"]):
+            return (
+                f"The PRISM ML engine runs a trained **GradientBoostingClassifier** (100 estimators, max depth 4) "
+                f"trained on 12,000 synthetic market conditions.\n\n"
+                f"• **Current Scenario Liquidation Probability**: **{ml_prob:.1f}%**\n"
+                f"• **Features Evaluated**: Health Factor ({hf:.3f}), 24h Return, 30d Realized Volatility ({context.get('volatility', 0.65)*100:.0f}%), "
+                f"Debt Ratio ({debt/col_usd*100:.1f}%), Distance to Liquidation, HF Velocity, and Crash Magnitude.\n\n"
+                f"Unlike static threshold alerts, the ML model identifies accelerating downside momentum before the Health Factor drops below 1.0."
+            )
+
+        if any(k in q for k in ["health factor", "hf", "solvency"]):
+            return (
+                f"**Health Factor (HF)**: Current value is **{hf:.4f}**.\n\n"
+                f"$$HF = \\frac{{\\text{{Collateral Base}}}}{{\\text{{Debt}}}} = \\frac{{{eth_amt} \\times \\${eth_price:,.0f} \\times {lt*100:.1f}\\%}}{{\\${debt:,.0f}}} = \\mathbf{{{hf:.4f}}}$$\n\n"
+                f"• **1.000**: Liquidation Boundary (Liquidators seize up to 50% collateral)\n"
+                f"• **{target:.3f}**: PRISM Dynamic Target (Base 1.10 + Volatility/Velocity Buffer +{buffer*100:.0f}%)\n"
+                f"• **Status**: {'Position in critical danger zone' if hf < 1.10 else 'Position safe' if hf >= target else 'Position requires proactive rescue'}."
+            )
+
+        if any(k in q for k in ["flash loan", "flash", "atomic", "how it works", "steps"]):
+            return (
+                f"PRISM executes an **Atomic 14-Step Flash Liquidity Rescue** with zero upfront capital:\n\n"
+                f"1. **Flash Loan Borrow**: Sourced ${repay:,.2f} USDC from Aave V3.\n"
+                f"2. **Debt Repayment**: Repays USDC debt, raising position solvency.\n"
+                f"3. **Collateral Release**: Unlocks {eth_sold:.4f} ETH from lending pool.\n"
+                f"4. **DEX Swap**: Swaps ETH -> USDC on Uniswap V3 (0.3% fee, 0.4% slippage).\n"
+                f"5. **Flash Repayment**: Repays flash loan principal + 0.05% fee ($4.07).\n"
+                f"6. **Verification**: Confirms post-rescue HF reaches {target:.3f}.\n\n"
+                f"If any step (like slippage limits) fails, the transaction **reverts completely with zero partial state**."
+            )
+
+        if any(k in q for k in ["economic", "gate", "cost", "benefit", "fee"]):
+            return (
+                f"**PRISM Economic Viability Gate**:\n\n"
+                f"• **Liquidation Loss Avoided**: +${loss:,.2f} (5% penalty on 50% seized debt)\n"
+                f"• **Total Rescue Cost**: -${cost:.2f} (Flash Fee $4.07 + DEX Fee $24.59 + Slippage $32.79 + Gas $25.00)\n"
+                f"• **Net Capital Preserved**: **+${benefit:,.2f}**\n\n"
+                f"**Gate Status**: **{'🟢 EXECUTION VIABLE' if econ.get('economic_viable', True) else '🔴 EXECUTION BLOCKED'}**.\n"
+                f"PRISM will ONLY execute when saving the position preserves more capital than liquidation penalties."
+            )
+
+        if any(k in q for k in ["preservation", "score", "capital"]):
+            return (
+                f"**Capital Preservation Score**: **{score:.1f} / 100**.\n\n"
+                f"$$\\text{{Score}} = \\left(\\frac{{\\text{{Liquidation Loss}} - \\text{{Rescue Cost}}}}{{\\text{{Liquidation Loss}}}}\\right) \\times 100 = \\left(\\frac{{\\${loss:,.2f} - \\${cost:.2f}}}{{\\${loss:,.2f}}}\\right) \\times 100 = \\mathbf{{{score:.1f}\\%}}$$\n\n"
+                f"• Standard Liquidation Retained: **${context.get('retained_standard_liquidation_usd', 24250):,.2f}**\n"
+                f"• PRISM Rescue Retained: **${context.get('retained_prism_rescue_usd', 31883.38):,.2f}**\n"
+                f"• Net Preserved: **+${benefit:,.2f}**."
+            )
+
+        # Default overview
+        return (
+            f"**PRISM Terminal Overview**:\n\n"
+            f"• **Position**: {eth_amt} ETH (${col_usd:,.2f}) vs ${debt:,.2f} USDC Debt | **HF**: **{hf:.4f}**\n"
+            f"• **Dynamic Target**: **{target:.4f}** (+{buffer*100:.0f}% adaptive buffer for market volatility)\n"
+            f"• **ML Scenario Risk**: **{ml_prob:.1f}%** | **Decision**: **{decision}**\n"
+            f"• **Optimization**: Repay **${repay:,.2f} USDC** using **{eth_sold:.4f} ETH** to save **+${benefit:,.2f}**.\n\n"
+            f"Ask me anything about formulas, ML features, flash loans, slippage, or keeper logic!"
+        )

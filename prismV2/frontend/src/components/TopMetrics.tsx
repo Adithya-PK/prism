@@ -43,6 +43,7 @@ export const TopMetrics: React.FC<TopMetricsProps> = ({
 
   const safePortfolio = isNaN(portfolioValue) ? 0 : portfolioValue;
   const safeCollateral = isNaN(collateralValue) ? 0 : collateralValue;
+  const effectivePortfolio = safePortfolio > 0 ? safePortfolio : safeCollateral;
   const safeDebt = isNaN(debtValue) ? 0 : debtValue;
   const safeHf = isNaN(healthFactor) ? 999 : healthFactor;
 
@@ -55,7 +56,7 @@ export const TopMetrics: React.FC<TopMetricsProps> = ({
           <Wallet className="w-4 h-4 text-purple-400" />
         </div>
         <div className="text-xl sm:text-2xl font-bold font-mono text-white">
-          ${safePortfolio.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          ${effectivePortfolio.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </div>
         <div className="text-[11px] font-mono text-slate-400 mt-1">Whole Wallet Valuation</div>
       </div>
