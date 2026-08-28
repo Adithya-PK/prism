@@ -7,6 +7,7 @@ import math
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional, List
+from datetime import datetime, timezone
 from app.services.llm_service import LLMService
 
 logger = logging.getLogger(__name__)
@@ -228,6 +229,25 @@ async def calculate_position(position: SimulationPosition):
 
     capital_score = compute_capital_preservation_score(rescue_cost, liq_data['total_loss'], net_benefit)
 
+    # Decision
+    needs_rescue = hf < target_hf
+    if not needs_rescue:
+        decision = 'ALREADY_SAFE'
+    elif intervention.get('status') != 'VIABLE':
+        decision = 'EXECUTION_UNSAFE'
+    elif economic_viable:
+        decision = 'RESCUE'
+    else:
+        decision = 'DO_NOT_RESCUE'
+
+    decision_reason = (
+        'Position already safe above target HF' if decision == 'ALREADY_SAFE' else
+        'Minimum intervention calculated — rescue is economically viable' if decision == 'RESCUE' else
+        'Rescue cost exceeds liquidation loss — not economically viable' if decision == 'DO_NOT_RESCUE' else
+        'Intervention parameters unsafe — cannot execute rescue' if decision == 'EXECUTION_UNSAFE' else
+        'Unknown'
+    )
+
     # Derived metrics
     collateral_used_usd = intervention.get('collateral_to_sell_usd', 0.0) if intervention.get('status') == 'VIABLE' else 0.0
     intervention_ratio_pct = round((collateral_used_usd / collateral_usd * 100) if collateral_usd > 0 else 0.0, 2)
@@ -293,13 +313,7 @@ async def calculate_position(position: SimulationPosition):
                        'Position stable'),
         },
         'decision': decision,
-        'decision_reason': (
-            'Position already safe above target HF' if decision == 'ALREADY_SAFE' else
-            'Minimum intervention calculated — rescue is economically viable' if decision == 'RESCUE' else
-            'Rescue cost exceeds liquidation loss — not economically viable' if decision == 'DO_NOT_RESCUE' else
-            'Intervention parameters unsafe — cannot execute rescue' if decision == 'EXECUTION_UNSAFE' else
-            'Unknown'
-        ),
+        'decision_reason': decision_reason,
         'ai_bullets': bullets,
         'ai_source': ai_source,
     }
