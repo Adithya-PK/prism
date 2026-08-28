@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import get_settings
-from app.api.routes import wallet, market, defi, risk, intervention, strategy, economics, rescue, explanation, dashboard
+from app.api.routes import wallet, market, defi, risk, intervention, strategy, economics, rescue, explanation, dashboard, ml, simulation
 
 # Configure logging
 settings = get_settings()
@@ -76,6 +76,8 @@ app.include_router(economics.router, prefix=API_PREFIX)
 app.include_router(rescue.router, prefix=API_PREFIX)
 app.include_router(explanation.router, prefix=API_PREFIX)
 app.include_router(dashboard.router, prefix=API_PREFIX)
+app.include_router(ml.router, prefix=API_PREFIX)
+app.include_router(simulation.router, prefix=API_PREFIX)
 
 
 # ─────────────────────────────────────────────────────────
