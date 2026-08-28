@@ -1,0 +1,12 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #080A12;
+  color: #F8FAFC;
+  -webkit-font-smoothing: antialiased;
+}
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #080A12; }
+::-webkit-scrollbar-thumb { background: #252A3A; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #8B5CF6; }
