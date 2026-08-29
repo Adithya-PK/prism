@@ -99,6 +99,23 @@ def compute_intervention(collateral_usd: float, debt_usd: float, lt: float,
     x = max(0, min(x, debt_usd))
     y = k * x  # collateral to sell (USD)
 
+    # Check if required collateral exceeds total available collateral (Position is insolvent / underwater)
+    if y > collateral_usd or collateral_usd <= debt_usd:
+        return {
+            'status': 'INSUFFICIENT_COLLATERAL',
+            'debt_to_repay_usd': round(debt_usd, 2),
+            'collateral_to_sell_usd': round(collateral_usd, 2),
+            'collateral_to_sell_eth': round((collateral_usd / eth_price) if eth_price > 0 else 0.0, 4),
+            'flash_loan_amount': round(debt_usd, 2),
+            'flash_fee_usd': round(debt_usd * flash_fee, 4),
+            'dex_fee_usd': round(collateral_usd * dex_fee, 4),
+            'slippage_usd': round(collateral_usd * slippage, 4),
+            'post_rescue_hf': 0.0,
+            'k_factor': round(k, 6),
+            'numerator': round(numerator, 4),
+            'denominator': round(denominator, 6),
+        }
+
     # Post rescue verification
     post_collateral = collateral_usd - y
     post_debt = debt_usd - x
@@ -420,12 +437,18 @@ async def simulate_crash(req: CrashRequest):
         result['decision'] = 'EXECUTION_UNSAFE'
     elif economic_viable:
         result['decision'] = 'RESCUE'
-    else:
-        result['decision'] = 'DO_NOT_RESCUE'
+    dec = result['decision']
+    result['decision_reason'] = (
+        'Position already safe above target HF' if dec == 'ALREADY_SAFE' else
+        'Minimum intervention calculated — rescue is economically viable' if dec == 'RESCUE' else
+        'Rescue cost exceeds safe economic threshold — execution blocked by Economic Gate' if dec == 'DO_NOT_RESCUE' else
+        'Position is underwater or collateral is insufficient to restore solvency' if dec == 'EXECUTION_UNSAFE' else
+        'Position requires monitoring'
+    )
 
     # Derived metrics & AI explanation
     col_used = new_intervention.get('collateral_to_sell_usd', 0.0) if new_intervention.get('status') == 'VIABLE' else 0.0
-    result['intervention_ratio_pct'] = round((col_used / collateral_usd * 100) if collateral_usd > 0 else 0.0, 2)
+    result['intervention_ratio_pct'] = min(round((col_used / collateral_usd * 100) if collateral_usd > 0 else 0.0, 2), 100.0)
     result['retained_standard_liquidation_usd'] = liq_data['remaining_collateral']
     result['retained_prism_rescue_usd'] = round(collateral_usd - col_used, 2)
 

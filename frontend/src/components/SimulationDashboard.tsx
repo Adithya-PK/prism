@@ -900,7 +900,7 @@ const SimulationDashboard: React.FC = () => {
                   <div className="p-2.5 rounded-lg bg-surface-secondary border border-border/80">
                     <div className="flex justify-between items-center text-[10px] mb-1">
                       <span className="text-slate-400">INTERVENTION RATIO</span>
-                      <span className="text-purple-300 font-bold">{(simResult.intervention_ratio_pct ?? 0).toFixed(1)}%</span>
+                      <span className="text-purple-300 font-bold">{Math.min(simResult.intervention_ratio_pct ?? 0, 100).toFixed(1)}%</span>
                     </div>
                     <div className="w-full bg-slate-800 rounded-full h-2 mb-1.5">
                       <div
@@ -933,9 +933,15 @@ const SimulationDashboard: React.FC = () => {
                   Position is already above target HF
                 </div>
               ) : (
-                <div className="text-center py-4 text-amber-400 font-mono text-sm">
-                  <AlertTriangle className="w-6 h-6 mx-auto mb-2" />
-                  {simResult?.intervention.status ?? 'Calculating...'}
+                <div className="p-3 rounded-lg bg-red-950/30 border border-red-500/40 text-center font-mono space-y-1.5">
+                  <AlertTriangle className="w-6 h-6 mx-auto text-red-400" />
+                  <div className="text-xs font-bold text-red-400">POSITION UNDERWATER / INSOLVENT</div>
+                  <div className="text-[10px] text-slate-300">
+                    Total Collateral ({formatUSD(simResult?.position.collateral_usd ?? 0, 0)}) is less than Debt ({formatUSD(simResult?.position.debt_usdc ?? 0, 0)}).
+                  </div>
+                  <div className="text-[9px] text-red-300">
+                    Cannot restructure without external capital injection.
+                  </div>
                 </div>
               )}
             </div>
